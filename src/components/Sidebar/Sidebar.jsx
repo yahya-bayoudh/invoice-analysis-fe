@@ -1,93 +1,7 @@
-import { NavLink } from 'react-router-dom';
-import styles from './Sidebar.module.css';
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 
-
-
-
-
-
-function Sidebar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const initials = user?.name
-    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'MA';
-
-  return (
-    <aside className={styles.sidebar}>
-      <div className={styles.logo}>
-        <span className={styles.logoDot} />
-        <span className={styles.logoText}>FacturAI</span>
-      </div>
-
-      <nav className={styles.nav}>
-        <p className={styles.navLabel}>Menu</p>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-            }
-          >
-            <span className={styles.navIcon}>{item.icon}</span>
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className={styles.bottom}>
-        {bottomItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-            }
-          >
-            <span className={styles.navIcon}>{item.icon}</span>
-            {item.label}
-          </NavLink>
-        ))}
-
-        <div className={styles.userCard}>
-          <div className={styles.userAvatar}>{initials}</div>
-          <div className={styles.userInfo}>
-            <p className={styles.userName}>{user?.name || 'Utilisateur'}</p>
-            <p className={styles.userEmail}>{user?.email || ''}</p>
-          </div>
-          <button
-            className={styles.logoutBtn}
-            title="Se déconnecter"
-            aria-label="Se déconnecter"
-            onClick={handleLogout}
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-const LogoutIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-    <polyline points="16 17 21 12 16 7"/>
-    <line x1="21" y1="12" x2="9" y2="12"/>
-  </svg>
-);
 const navItems = [
   {
     label: "Vue d'ensemble",
@@ -151,6 +65,18 @@ const LogoutIcon = () => (
 );
 
 function Sidebar() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'MA';
+
   return (
     <aside className={styles.sidebar}>
       <div className={styles.logo}>
@@ -189,16 +115,16 @@ function Sidebar() {
         ))}
 
         <div className={styles.userCard}>
-          <div className={styles.userAvatar}>MA</div>
+          <div className={styles.userAvatar}>{initials}</div>
           <div className={styles.userInfo}>
-            <p className={styles.userName}>Mohamed Ali</p>
-            <p className={styles.userEmail}>m.ali@facturai.com</p>
+            <p className={styles.userName}>{user?.name || 'Utilisateur'}</p>
+            <p className={styles.userEmail}>{user?.email || ''}</p>
           </div>
           <button
             className={styles.logoutBtn}
             title="Se déconnecter"
             aria-label="Se déconnecter"
-            onClick={(e) => { e.stopPropagation(); /* handle logout */ }}
+            onClick={handleLogout}
           >
             <LogoutIcon />
           </button>
