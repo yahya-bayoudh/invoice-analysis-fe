@@ -1,0 +1,144 @@
+.page {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 700px;
+}
+
+.pageHeader {
+  margin-bottom: 0.5rem;
+}
+
+.pageTitle {
+  font-size: 18px;
+  font-weight: 500;
+  color: #111111;
+  margin: 0 0 4px;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.section {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sectionIcon {
+  display: flex;
+  align-items: center;
+  color: #534AB7;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111111;
+  margin: 0;
+}
+
+.sectionBody {
+  padding: 4px 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  gap: 1rem;
+}
+
+.row + .row {
+  border-top: 1px solid #f3f4f6;
+}
+
+.rowLabel {
+  flex: 1;
+}
+
+.rowName {
+  font-size: 13.5px;
+  color: #111111;
+  margin: 0 0 2px;
+}
+
+.rowDesc {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.editBtn {
+  font-size: 12px;
+  color: #534AB7;
+  border: 1px solid #AFA9EC;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  background: transparent;
+  white-space: nowrap;
+  transition: background-color 0.12s;
+}
+
+.editBtn:hover {
+  background-color: #EEEDFE;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #534AB7;
+  background: #EEEDFE;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.toggle {
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  border: none;
+  background: #e5e7eb;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.toggleOn {
+  background: #534AB7;
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: left 0.2s;
+  display: block;
+}
+
+.toggleOn .toggleThumb {
+  left: 19px;
+}
