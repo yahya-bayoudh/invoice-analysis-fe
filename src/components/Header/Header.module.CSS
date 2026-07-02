@@ -35,6 +35,7 @@
 
 .actions {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
 }
@@ -77,4 +78,142 @@
   line-height: 1;
   border: 1.5px solid #ffffff;
   box-sizing: border-box;
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #534AB7;
+  border-radius: 8px;
+  background: #ffffff;
+  width: 220px;
+  color: #6b7280;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #111111;
+  background: transparent;
+}
+
+.searchInput::placeholder {
+  color: #9ca3af;
+}
+
+.searchClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+}
+
+.searchClose:hover {
+  color: #111111;
+}
+
+.notifWrap {
+  position: relative;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.notifPanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.notifHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.notifTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111111;
+}
+
+.notifClear {
+  font-size: 12px;
+  color: #534AB7;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notifClear:hover {
+  text-decoration: underline;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  transition: background-color 0.1s;
+  cursor: pointer;
+}
+
+.notifItem:hover {
+  background: #f9fafb;
+}
+
+.notifItem + .notifItem {
+  border-top: 1px solid #f3f4f6;
+}
+
+.notifUnread {
+  background: #FAFAFE;
+}
+
+.notifDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #534AB7;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.notifContent {
+  flex: 1;
+}
+
+.notifText {
+  font-size: 13px;
+  color: #111111;
+  margin: 0 0 3px;
+  line-height: 1.4;
+}
+
+.notifTime {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0;
 }

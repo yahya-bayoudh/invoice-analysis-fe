@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import styles from './Header.module.css';
 
@@ -7,13 +8,6 @@ const pageTitles = {
   '/recommandations': 'Recommandations',
   '/parametres': 'Paramètres',
 };
-
-const SearchIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-  </svg>
-);
 
 const BellIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -30,9 +24,16 @@ const ChevronIcon = () => (
   </svg>
 );
 
+const notifications = [
+  { id: 1, text: 'Facture BTP Lefèvre en retard', time: 'Il y a 2h', unread: true },
+  { id: 2, text: 'Nouvelle facture importée avec succès', time: 'Il y a 5h', unread: true },
+  { id: 3, text: 'Recommandation IA disponible', time: 'Hier', unread: true },
+];
+
 function Header({ pendingCount = 0 }) {
   const location = useLocation();
   const currentLabel = pageTitles[location.pathname] || 'Page';
+  const [notifOpen, setNotifOpen] = useState(false);
 
   return (
     <header className={styles.header}>
@@ -43,15 +44,39 @@ function Header({ pendingCount = 0 }) {
       </div>
 
       <div className={styles.actions}>
-        <button className={styles.iconBtn} aria-label="Rechercher">
-          <SearchIcon />
-        </button>
-        <button className={styles.iconBtn} aria-label="Notifications">
-          <BellIcon />
-          {pendingCount > 0 && (
-            <span className={styles.badge}>{pendingCount}</span>
+        <div className={styles.notifWrap}>
+          <button
+            className={styles.iconBtn}
+            aria-label="Notifications"
+            onClick={() => setNotifOpen(o => !o)}
+          >
+            <BellIcon />
+            {pendingCount > 0 && <span className={styles.badge}>{pendingCount}</span>}
+          </button>
+
+          {notifOpen && (
+            <>
+              <div className={styles.backdrop} onClick={() => setNotifOpen(false)} />
+              <div className={styles.notifPanel}>
+                <div className={styles.notifHeader}>
+                  <span className={styles.notifTitle}>Notifications</span>
+                  <button className={styles.notifClear} onClick={() => setNotifOpen(false)}>
+                    Tout marquer lu
+                  </button>
+                </div>
+                {notifications.map(n => (
+                  <div key={n.id} className={`${styles.notifItem} ${n.unread ? styles.notifUnread : ''}`}>
+                    <div className={styles.notifDot} />
+                    <div className={styles.notifContent}>
+                      <p className={styles.notifText}>{n.text}</p>
+                      <p className={styles.notifTime}>{n.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
-        </button>
+        </div>
       </div>
     </header>
   );

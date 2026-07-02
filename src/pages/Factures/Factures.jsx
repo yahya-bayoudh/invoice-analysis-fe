@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './Factures.module.css';
 
 const allInvoices = [
@@ -34,6 +35,7 @@ const SearchIcon = () => (
 );
 
 function Factures({ onImport }) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
 
@@ -121,7 +123,12 @@ function Factures({ onImport }) {
                       <span className={`${styles.badge} ${styles[s.className]}`}>{s.label}</span>
                     </td>
                     <td className={styles.td}>
-                      <button className={styles.actionBtn}>Voir →</button>
+                      <button
+                        className={styles.actionBtn}
+                        onClick={() => navigate(`/factures/${inv.id}`)}
+                      >
+                        Voir →
+                      </button>
                     </td>
                   </tr>
                 );

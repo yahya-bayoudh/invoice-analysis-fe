@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 const kpis = [
@@ -69,6 +70,8 @@ const statusConfig = {
 };
 
 function Dashboard({ onImport }) {
+  const navigate = useNavigate();
+
   return (
     <div className={styles.page}>
 
@@ -103,7 +106,9 @@ function Dashboard({ onImport }) {
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
           <h2 className={styles.tableTitle}>Factures récentes</h2>
-          <button className={styles.viewAllBtn}>Voir toutes les factures →</button>
+          <button className={styles.viewAllBtn} onClick={() => navigate('/factures')}>
+            Voir toutes les factures →
+          </button>
         </div>
         <table className={styles.table}>
           <thead>
