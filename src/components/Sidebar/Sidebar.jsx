@@ -117,7 +117,7 @@ function Sidebar() {
         <div className={styles.userCard}>
           <div className={styles.userAvatar}>{initials}</div>
           <div className={styles.userInfo}>
-            <p className={styles.userName}>{user?.name || 'Utilisateur'}</p>
+            <p className={styles.userName}>{user?.username || 'Utilisateur'}</p>
             <p className={styles.userEmail}>{user?.email || ''}</p>
           </div>
           <button

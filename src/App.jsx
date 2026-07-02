@@ -15,6 +15,14 @@ import ForgotPassword from './pages/Auth/ForgotPassword';
 function App() {
   const [showImport, setShowImport] = useState(false);
 
+  const handleCloseImport = () => {
+    setShowImport(false);
+  };
+
+  const handleImportSuccess = () => {
+    window.location.reload();
+  };
+
   return (
     <AuthProvider>
       <Routes>
@@ -34,7 +42,7 @@ function App() {
                 <Route path="/recommandations" element={<Recommandations />} />
                 <Route path="/parametres" element={<Parametres />} />
               </Routes>
-              {showImport && <ImportModal onClose={() => setShowImport(false)} />}
+              {showImport && <ImportModal onClose={handleCloseImport} onImportSuccess={handleImportSuccess} />}
             </Layout>
           </ProtectedRoute>
         } />

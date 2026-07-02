@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import styles from './Header.module.css';
 
@@ -8,12 +9,11 @@ const pageTitles = {
   '/parametres': 'Paramètres',
 };
 
-const SearchIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-  </svg>
-);
+const mockNotifications = [
+  { id: 1, text: 'Facture #INV-001 en retard de paiement.', time: 'Il y a 2h', unread: true },
+  { id: 2, text: 'Nouvelle facture importée avec succès.', time: 'Il y a 5h', unread: true },
+  { id: 3, text: 'Facture #INV-003 marquée comme payée.', time: 'Hier', unread: false },
+];
 
 const BellIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -33,6 +33,8 @@ const ChevronIcon = () => (
 function Header({ pendingCount = 0 }) {
   const location = useLocation();
   const currentLabel = pageTitles[location.pathname] || 'Page';
+  const [notifOpen, setNotifOpen] = useState(false);
+  const bellRef = useRef(null);
 
   return (
     <header className={styles.header}>
@@ -43,18 +45,41 @@ function Header({ pendingCount = 0 }) {
       </div>
 
       <div className={styles.actions}>
-        <button className={styles.iconBtn} aria-label="Rechercher">
-          <SearchIcon />
-        </button>
-        <button className={styles.iconBtn} aria-label="Notifications">
-          <BellIcon />
-          {pendingCount > 0 && (
-            <span className={styles.badge}>{pendingCount}</span>
+        <div className={styles.notifWrapper} ref={bellRef}>
+          <button
+            className={styles.iconBtn}
+            aria-label="Notifications"
+            onClick={() => setNotifOpen((prev) => !prev)}
+          >
+            <BellIcon />
+            {pendingCount > 0 && (
+              <span className={styles.badge}>{pendingCount}</span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <>
+              <div className={styles.notifBackdrop} onClick={() => setNotifOpen(false)} />
+              <div className={styles.notifDropdown}>
+                <div className={styles.notifHeader}>
+                  <span className={styles.notifTitle}>Notifications</span>
+                  <span className={styles.notifCount}>{mockNotifications.filter(n => n.unread).length} nouvelles</span>
+                </div>
+                <div className={styles.notifList}>
+                  {mockNotifications.map((n) => (
+                    <div key={n.id} className={`${styles.notifItem} ${n.unread ? styles.notifUnread : ''}`}>
+                      <p className={styles.notifText}>{n.text}</p>
+                      <span className={styles.notifTime}>{n.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
-        </button>
+        </div>
       </div>
     </header>
   );
 }
 
-export default Header;
+export default Header

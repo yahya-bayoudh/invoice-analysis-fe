@@ -1,31 +1,56 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 import styles from './Factures.module.css';
-
-const allInvoices = [
-  { id: 'FAC-2024-089', client: 'Société Dupont',    date: '18 juin 2025', amount: '3 200 €',  status: 'payée' },
-  { id: 'FAC-2024-088', client: 'Atelier Martin',    date: '15 juin 2025', amount: '780 €',    status: 'en attente' },
-  { id: 'FAC-2024-087', client: 'BTP Lefèvre',       date: '12 juin 2025', amount: '12 450 €', status: 'en retard' },
-  { id: 'FAC-2024-086', client: 'Cabinet Renard',    date: '10 juin 2025', amount: '1 900 €',  status: 'payée' },
-  { id: 'FAC-2024-085', client: 'Imprimerie Blanc',  date: '7 juin 2025',  amount: '560 €',    status: 'en attente' },
-  { id: 'FAC-2024-084', client: 'Société Dupont',    date: '3 juin 2025',  amount: '4 100 €',  status: 'payée' },
-  { id: 'FAC-2024-083', client: 'Transport Morel',   date: '28 mai 2025',  amount: '2 750 €',  status: 'en retard' },
-  { id: 'FAC-2024-082', client: 'Cabinet Renard',    date: '24 mai 2025',  amount: '890 €',    status: 'payée' },
-  { id: 'FAC-2024-081', client: 'BTP Lefèvre',       date: '20 mai 2025',  amount: '6 300 €',  status: 'en attente' },
-  { id: 'FAC-2024-080', client: 'Atelier Martin',    date: '15 mai 2025',  amount: '1 200 €',  status: 'payée' },
-];
+import { useNavigate } from 'react-router-dom';
 
 const statusConfig = {
-  'payée':      { label: 'Payée',       className: 'statusPaid' },
-  'en attente': { label: 'En attente',  className: 'statusPending' },
-  'en retard':  { label: 'En retard',   className: 'statusLate' },
+  done: { label: 'Payée', className: 'statusPaid' },
+  pending: { label: 'En attente', className: 'statusPending' },
+  error: { label: 'En retard', className: 'statusLate' },
+};
+
+const normalizeStatus = (status) => {
+  const value = status?.toString().trim().toLowerCase();
+
+  switch (value) {
+    case 'done':
+      return 'done';
+    case 'pending':
+      return 'pending';
+    case 'error':
+      return 'error';
+    default:
+      return undefined;
+  }
 };
 
 const tabs = [
-  { key: 'all',         label: 'Toutes' },
-  { key: 'payée',       label: 'Payées' },
-  { key: 'en attente',  label: 'En attente' },
-  { key: 'en retard',   label: 'En retard' },
+  { key: 'all', label: 'Toutes' },
+  { key: 'done', label: 'Payées' },
+  { key: 'pending', label: 'En attente' },
+  { key: 'error', label: 'En retard' },
 ];
+
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+
+const formatDate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+};
 
 const SearchIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -34,16 +59,77 @@ const SearchIcon = () => (
 );
 
 function Factures({ onImport }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
+  const [invoices, setInvoices] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const filtered = allInvoices.filter((inv) => {
-    const matchesTab = activeTab === 'all' || inv.status === activeTab;
-    const matchesSearch =
-      inv.client.toLowerCase().includes(search.toLowerCase()) ||
-      inv.id.toLowerCase().includes(search.toLowerCase());
-    return matchesTab && matchesSearch;
-  });
+  const pageSize = 8;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadInvoices = async () => {
+      try {
+        setLoading(true);
+        const userId = user?.id || user?._id || user?.email;
+        const response = await axios.get('http://localhost:3000/invoices', {
+          params: {
+            page,
+            limit: pageSize,
+            status: activeTab === 'all' ? undefined : activeTab,
+            userId,
+          },
+        });
+
+        if (mounted) {
+          const payload = (response.data?.data || []).map((invoice) => ({
+            ...invoice,
+            status: normalizeStatus(invoice.status) || invoice.status,
+          }));
+
+          setInvoices(payload);
+          setTotalPages(response.data?.totalPages || 1);
+          setTotalItems(response.data?.total || 0);
+          setError('');
+        }
+      } catch (err) {
+        if (mounted) {
+          setError('Impossible de charger les factures depuis l’API.');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadInvoices();
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeTab, page, user]);
+
+  const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return invoices.filter((invoice) => {
+      const normalizedStatus = normalizeStatus(invoice.status) || invoice.status;
+      const matchesTab = activeTab === 'all' || normalizedStatus === activeTab;
+      const clientName = invoice.supplier?.name || invoice.user?.username || '';
+      const ref = invoice.number || '';
+      const haystack = `${clientName} ${ref}`.toLowerCase();
+      const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
+      return matchesTab && matchesSearch;
+    });
+  }, [activeTab, invoices, search]);
 
   return (
     <div className={styles.page}>
@@ -51,7 +137,7 @@ function Factures({ onImport }) {
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.pageTitle}>Factures</h1>
-          <p className={styles.pageSubtitle}>{allInvoices.length} factures au total</p>
+          <p className={styles.pageSubtitle}>{totalItems} factures au total</p>
         </div>
         <button className={styles.importBtn} onClick={onImport}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -67,13 +153,16 @@ function Factures({ onImport }) {
             <button
               key={tab.key}
               className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setPage(1);
+              }}
             >
               {tab.label}
               <span className={`${styles.tabCount} ${activeTab === tab.key ? styles.tabCountActive : ''}`}>
                 {tab.key === 'all'
-                  ? allInvoices.length
-                  : allInvoices.filter(i => i.status === tab.key).length}
+                  ? totalItems
+                  : invoices.filter((invoice) => (normalizeStatus(invoice.status) || invoice.status) === tab.key).length}
               </span>
             </button>
           ))}
@@ -91,8 +180,12 @@ function Factures({ onImport }) {
         </div>
       </div>
 
-      <div className={styles.tableCard}>
-        <table className={styles.table}>
+      {loading && <p className={styles.pageSubtitle}>Chargement des factures…</p>}
+      {!loading && error && <p className={styles.pageSubtitle}>{error}</p>}
+
+      {!loading && !error && (
+        <div className={styles.tableCard}>
+          <table className={styles.table}>
           <thead>
             <tr>
               <th className={styles.th}>Référence</th>
@@ -104,32 +197,54 @@ function Factures({ onImport }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className={styles.empty}>Aucune facture trouvée.</td>
-              </tr>
-            ) : (
-              filtered.map((inv) => {
-                const s = statusConfig[inv.status];
-                return (
-                  <tr key={inv.id} className={styles.tr}>
-                    <td className={`${styles.td} ${styles.tdRef}`}>{inv.id}</td>
-                    <td className={styles.td}>{inv.client}</td>
-                    <td className={`${styles.td} ${styles.tdMuted}`}>{inv.date}</td>
-                    <td className={`${styles.td} ${styles.tdAmount}`}>{inv.amount}</td>
-                    <td className={styles.td}>
-                      <span className={`${styles.badge} ${styles[s.className]}`}>{s.label}</span>
-                    </td>
-                    <td className={styles.td}>
-                      <button className={styles.actionBtn}>Voir →</button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className={styles.empty}>Aucune facture trouvée.</td>
+                </tr>
+              ) : (
+                filtered.map((invoice) => {
+                  const normalizedStatus = normalizeStatus(invoice.status) || invoice.status;
+                  const status = statusConfig[normalizedStatus] || statusConfig.pending;
+                  return (
+                    <tr key={invoice._id || invoice.number} className={styles.tr}>
+                      <td className={`${styles.td} ${styles.tdRef}`}>{invoice.number || '—'}</td>
+                      <td className={styles.td}>{invoice.supplier?.name || invoice.user?.username || '—'}</td>
+                      <td className={`${styles.td} ${styles.tdMuted}`}>{formatDate(invoice.date)}</td>
+                      <td className={`${styles.td} ${styles.tdAmount}`}>{formatCurrency(invoice.totalPrice)}</td>
+                      <td className={styles.td}>
+                        <span className={`${styles.badge} ${styles[status.className]}`}>{status.label}</span>
+                      </td>
+                      <td className={styles.td}>
+                        <button className={styles.actionBtn} onClick={() => navigate(`/factures/${invoice._id}`)}>
+                          Voir →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+
+          <div className={styles.paginationBar}>
+            <button
+              className={styles.actionBtn}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={page === 1}
+            >
+              Précédent
+            </button>
+            <span className={styles.pageSubtitle}>Page {page} / {totalPages}</span>
+            <button
+              className={styles.actionBtn}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              disabled={page >= totalPages}
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

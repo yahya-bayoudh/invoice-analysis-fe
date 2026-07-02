@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 import styles from './ImportModal.module.css';
 
 const CloseIcon = () => (
@@ -28,7 +30,39 @@ const SparkleIcon = () => (
   </svg>
 );
 
-function ImportModal({ onClose }) {
+const mapStatusToBackend = (value) => {
+  switch (value?.toLowerCase()) {
+    case 'payée':
+    case 'done':
+      return 'done';
+    case 'en retard':
+    case 'error':
+      return 'error';
+    case 'en attente':
+    case 'pending':
+    default:
+      return 'pending';
+  }
+};
+
+const parseAmount = (value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'number') return value;
+
+  const cleaned = String(value).replace(/[^\d,.-]/g, '').replace(/,/g, '.');
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
+
+const normalizeExtractedData = (parsed = {}) => ({
+  reference: parsed.reference || parsed.numero || '',
+  supplierName: parsed.client || parsed.supplierName || parsed.fournisseur || '',
+  date: parsed.date || '',
+  totalPrice: parsed.montant ?? parsed.totalPrice ?? parsed.total ?? '',
+  status: parsed.statut || parsed.status || 'en attente',
+});
+
+function ImportModal({ onClose, onImportSuccess }) {
   const [tab, setTab] = useState('file');
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
@@ -37,6 +71,7 @@ function ImportModal({ onClose }) {
   const [error, setError] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [capturing, setCapturing] = useState(false);
+  const { user } = useAuth();
 
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -49,55 +84,19 @@ function ImportModal({ onClose }) {
     setFields(null);
 
     try {
-      const base64 = await new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result.split(',')[1]);
-        reader.onerror = () => rej(new Error('Lecture échouée'));
-        reader.readAsDataURL(fileObj);
+      const formData = new FormData();
+      formData.append('file', fileObj);
+      formData.append(
+        'prompt',
+        'Analyse cette facture et réponds UNIQUEMENT en JSON valide sans texte autour. Format exact : {"reference":"","client":"","date":"","montant":"","statut":"payée|en attente|en retard"}. Si une valeur est introuvable, utilise une chaîne vide.'
+      );
+
+      const response = await axios.post('http://localhost:3000/ai/analyze', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const isPdf = fileObj.type === 'application/pdf';
-      const mediaType = isPdf ? 'application/pdf' : fileObj.type;
-
-      const contentBlock = isPdf
-        ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } }
-        : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } };
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          system: `Tu es un expert en extraction de données de factures françaises.
-Analyse le document et extrais les informations clés.
-Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, sans balises markdown.
-Format exact :
-{
-  "reference": "numéro de facture ou vide",
-  "client": "nom du client ou fournisseur",
-  "date": "date de la facture au format JJ/MM/AAAA",
-  "montant": "montant total avec devise ex: 1 200 €",
-  "statut": "payée" | "en attente" | "en retard"
-}
-Si une valeur est introuvable, utilise une chaîne vide.`,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                contentBlock,
-                { type: 'text', text: 'Extrais les données de cette facture.' },
-              ],
-            },
-          ],
-        }),
-      });
-
-      const data = await response.json();
-      const text = data.content?.find(b => b.type === 'text')?.text || '';
-      const cleaned = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(cleaned);
-      setFields(parsed);
+      const parsed = response.data?.data || {};
+      setFields(normalizeExtractedData(parsed));
     } catch {
       setError("Impossible d'analyser le fichier. Vérifiez qu'il s'agit bien d'une facture.");
     } finally {
@@ -155,9 +154,34 @@ Si une valeur est introuvable, utilise une chaîne vide.`,
     onClose();
   };
 
-  const handleSubmit = () => {
-    // TODO: send fields to backend
-    handleClose();
+  const handleSubmit = async () => {
+    if (!fields) return;
+
+    try {
+      const userId = user?.id || user?._id || user?.email;
+      if (!userId) {
+        setError('Vous devez être connecté pour importer une facture.');
+        return;
+      }
+
+      await axios.post('http://localhost:3000/invoices/from-analysis', {
+        number: fields.reference || '',
+        supplierName: fields.supplierName || '',
+        date: fields.date || '',
+        totalPrice: parseAmount(fields.totalPrice),
+        status: mapStatusToBackend(fields.status),
+        user: userId,
+      });
+
+      if (onImportSuccess) {
+        onImportSuccess();
+        return;
+      }
+
+      handleClose();
+    } catch {
+      setError("Impossible d'enregistrer la facture. Vérifiez les données extraites.");
+    }
   };
 
   return (
@@ -259,9 +283,9 @@ Si une valeur est introuvable, utilise une chaîne vide.`,
               </div>
               {[
                 { key: 'reference', label: 'Référence' },
-                { key: 'client',    label: 'Client' },
-                { key: 'date',      label: 'Date' },
-                { key: 'montant',   label: 'Montant' },
+                { key: 'supplierName', label: 'Client' },
+                { key: 'date', label: 'Date' },
+                { key: 'totalPrice', label: 'Montant' },
               ].map(({ key, label }) => (
                 <div key={key} className={styles.field}>
                   <label className={styles.label}>{label}</label>
@@ -276,8 +300,8 @@ Si une valeur est introuvable, utilise une chaîne vide.`,
                 <label className={styles.label}>Statut</label>
                 <select
                   className={styles.input}
-                  value={fields.statut || 'en attente'}
-                  onChange={e => setFields(f => ({ ...f, statut: e.target.value }))}
+                  value={fields.status || 'en attente'}
+                  onChange={e => setFields(f => ({ ...f, status: e.target.value }))}
                 >
                   <option value="payée">Payée</option>
                   <option value="en attente">En attente</option>
