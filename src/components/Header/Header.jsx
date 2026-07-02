@@ -30,6 +30,12 @@ const ChevronIcon = () => (
   </svg>
 );
 
+const notifications = [
+  { id: 1, text: 'Facture BTP Lefèvre en retard', time: 'Il y a 2h', unread: true },
+  { id: 2, text: 'Nouvelle facture importée avec succès', time: 'Il y a 5h', unread: true },
+  { id: 3, text: 'Recommandation IA disponible', time: 'Hier', unread: true },
+];
+
 function Header({ pendingCount = 0 }) {
   const location = useLocation();
   const currentLabel = pageTitles[location.pathname] || 'Page';

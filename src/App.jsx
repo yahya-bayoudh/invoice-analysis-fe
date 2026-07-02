@@ -11,6 +11,7 @@ import ImportModal from './components/ImportModal/ImportModal';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
+<Route path="/factures/:id" element={<div style={{padding:'2rem'}}>Détail facture — bientôt disponible.</div>} />
 
 function App() {
   const [showImport, setShowImport] = useState(false);
