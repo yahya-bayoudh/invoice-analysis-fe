@@ -11,6 +11,7 @@ import ImportModal from './components/ImportModal/ImportModal';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
+import FactureDisplay from './pages/Factures/FactureDisplay/FactureDisplay';
 <Route path="/factures/:id" element={<div style={{padding:'2rem'}}>Détail facture — bientôt disponible.</div>} />
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<Dashboard onImport={() => setShowImport(true)} />} />
                 <Route path="/factures" element={<Factures onImport={() => setShowImport(true)} />} />
+                <Route path="/factures/:id" element={<FactureDisplay />} />
                 <Route path="/recommandations" element={<Recommandations />} />
                 <Route path="/parametres" element={<Parametres />} />
               </Routes>

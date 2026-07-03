@@ -25,6 +25,18 @@ const normalizeStatus = (status) => {
   }
 };
 
+const categoryConfig = {
+  smartphone: 'Smartphone',
+  charger: 'Chargeur',
+  headphones: 'Écouteurs',
+  tablet: 'Tablette',
+  laptop: 'Ordinateur portable',
+  monitor: 'Écran',
+  mouse: 'Souris',
+  keyboard: 'Clavier',
+  other: 'Autre',
+};
+
 const tabs = [
   { key: 'all', label: 'Toutes' },
   { key: 'done', label: 'Payées' },
@@ -69,6 +81,8 @@ function Factures({ onImport }) {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updatingId, setUpdatingId] = useState(null);
+  const [updatingCategoryId, setUpdatingCategoryId] = useState(null);
 
   const pageSize = 8;
 
@@ -131,6 +145,52 @@ function Factures({ onImport }) {
     });
   }, [activeTab, invoices, search]);
 
+  const updateStatus = async (invoiceId, newStatus) => {
+    const previous = invoices;
+
+    // optimistic update so the UI feels instant
+    setInvoices((current) =>
+      current.map((inv) => (inv._id === invoiceId ? { ...inv, status: newStatus } : inv))
+    );
+    setUpdatingId(invoiceId);
+
+    try {
+      await axios.patch(`http://localhost:3000/invoices`, {
+        id: invoiceId,
+        status: newStatus,
+      });
+      setError('');
+    } catch (err) {
+      setInvoices(previous); // rollback on failure
+      setError('Impossible de mettre à jour le statut.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const updateCategory = async (invoiceId, newCategory) => {
+    const previous = invoices;
+
+    // optimistic update so the UI feels instant
+    setInvoices((current) =>
+      current.map((inv) => (inv._id === invoiceId ? { ...inv, category: newCategory } : inv))
+    );
+    setUpdatingCategoryId(invoiceId);
+
+    try {
+      await axios.patch(`http://localhost:3000/invoices`, {
+        id: invoiceId,
+        category: newCategory,
+      });
+      setError('');
+    } catch (err) {
+      setInvoices(previous); // rollback on failure
+      setError('Impossible de mettre à jour la catégorie.');
+    } finally {
+      setUpdatingCategoryId(null);
+    }
+  };
+
   return (
     <div className={styles.page}>
 
@@ -190,6 +250,7 @@ function Factures({ onImport }) {
             <tr>
               <th className={styles.th}>Référence</th>
               <th className={styles.th}>Client</th>
+              <th className={styles.th}>Catégorie</th>
               <th className={styles.th}>Date</th>
               <th className={styles.th}>Montant</th>
               <th className={styles.th}>Statut</th>
@@ -199,7 +260,7 @@ function Factures({ onImport }) {
           <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>Aucune facture trouvée.</td>
+                  <td colSpan={7} className={styles.empty}>Aucune facture trouvée.</td>
                 </tr>
               ) : (
                 filtered.map((invoice) => {
@@ -209,10 +270,31 @@ function Factures({ onImport }) {
                     <tr key={invoice._id || invoice.number} className={styles.tr}>
                       <td className={`${styles.td} ${styles.tdRef}`}>{invoice.number || '—'}</td>
                       <td className={styles.td}>{invoice.supplier?.name || invoice.user?.username || '—'}</td>
+                      <td className={styles.td}>
+                        <select
+                          className={styles.categorySelect}
+                          value={invoice.category || 'other'}
+                          disabled={updatingCategoryId === invoice._id}
+                          onChange={(e) => updateCategory(invoice._id, e.target.value)}
+                        >
+                          {Object.entries(categoryConfig).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className={`${styles.td} ${styles.tdMuted}`}>{formatDate(invoice.date)}</td>
                       <td className={`${styles.td} ${styles.tdAmount}`}>{formatCurrency(invoice.totalPrice)}</td>
                       <td className={styles.td}>
-                        <span className={`${styles.badge} ${styles[status.className]}`}>{status.label}</span>
+                        <select
+                          className={`${styles.badge} ${styles[status.className]}`}
+                          value={normalizedStatus}
+                          disabled={updatingId === invoice._id}
+                          onChange={(e) => updateStatus(invoice._id, e.target.value)}
+                        >
+                          <option value="pending">En attente</option>
+                          <option value="done">Payée</option>
+                          <option value="error">En retard</option>
+                        </select>
                       </td>
                       <td className={styles.td}>
                         <button className={styles.actionBtn} onClick={() => navigate(`/factures/${invoice._id}`)}>

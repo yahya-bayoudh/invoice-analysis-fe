@@ -54,12 +54,52 @@ const parseAmount = (value) => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
+const CATEGORY_OPTIONS = [
+  { value: 'smartphone', label: 'Smartphone' },
+  { value: 'charger', label: 'Chargeur' },
+  { value: 'headphones', label: 'Casque / Écouteurs' },
+  { value: 'tablet', label: 'Tablette' },
+  { value: 'laptop', label: 'Ordinateur portable' },
+  { value: 'monitor', label: 'Écran' },
+  { value: 'mouse', label: 'Souris' },
+  { value: 'keyboard', label: 'Clavier' },
+  { value: 'other', label: 'Autre' },
+];
+
+const normalizeCategory = (value) => {
+  if (value === undefined || value === null || value === '') return 'other';
+  const normalized = String(value).trim().toLowerCase();
+  const categoryMap = {
+    smartphone: 'smartphone',
+    chargeur: 'charger',
+    headphones: 'headphones',
+    casque: 'headphones',
+    écouteurs: 'headphones',
+    ecouteurs: 'headphones',
+    tablet: 'tablet',
+    tablette: 'tablet',
+    laptop: 'laptop',
+    'ordinateur portable': 'laptop',
+    monitor: 'monitor',
+    écran: 'monitor',
+    ecran: 'monitor',
+    mouse: 'mouse',
+    souris: 'mouse',
+    keyboard: 'keyboard',
+    clavier: 'keyboard',
+    other: 'other',
+    autre: 'other',
+  };
+  return categoryMap[normalized] || 'other';
+};
+
 const normalizeExtractedData = (parsed = {}) => ({
   reference: parsed.reference || parsed.numero || '',
   supplierName: parsed.client || parsed.supplierName || parsed.fournisseur || '',
   date: parsed.date || '',
   totalPrice: parsed.montant ?? parsed.totalPrice ?? parsed.total ?? '',
   status: parsed.statut || parsed.status || 'en attente',
+  category: normalizeCategory(parsed.category || parsed.categorie || ''),
 });
 
 function ImportModal({ onClose, onImportSuccess }) {
@@ -86,10 +126,21 @@ function ImportModal({ onClose, onImportSuccess }) {
     try {
       const formData = new FormData();
       formData.append('file', fileObj);
+
+      const uploadResponse = await axios.post('http://localhost:3000/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (!uploadResponse.data?.filename){
+        throw new Error('Upload failed');
+      }
+      localStorage.setItem('lastUploadedFilePath', "http://localhost:3000/uploads/" + uploadResponse.data.filename);
+
       formData.append(
         'prompt',
-        'Analyse cette facture et réponds UNIQUEMENT en JSON valide sans texte autour. Format exact : {"reference":"","client":"","date":"","montant":"","statut":"payée|en attente|en retard"}. Si une valeur est introuvable, utilise une chaîne vide.'
+        'Analyse cette facture et réponds UNIQUEMENT en JSON valide sans texte autour. Format exact : {"reference":"","client":"","date":"","montant":"","statut":"payée|en attente|en retard","categorie":"smartphone|charger|headphones|tablet|laptop|monitor|mouse|keyboard|other"}. Si une valeur est introuvable, utilise une chaîne vide.'
       );
+
 
       const response = await axios.post('http://localhost:3000/ai/analyze', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -170,7 +221,9 @@ function ImportModal({ onClose, onImportSuccess }) {
         date: fields.date || '',
         totalPrice: parseAmount(fields.totalPrice),
         status: mapStatusToBackend(fields.status),
+        category: fields.category || 'other',
         user: userId,
+        filePath: localStorage.getItem('lastUploadedFilePath') || '',
       });
 
       if (onImportSuccess) {
@@ -306,6 +359,20 @@ function ImportModal({ onClose, onImportSuccess }) {
                   <option value="payée">Payée</option>
                   <option value="en attente">En attente</option>
                   <option value="en retard">En retard</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Catégorie</label>
+                <select
+                  className={styles.input}
+                  value={fields.category || 'other'}
+                  onChange={e => setFields(f => ({ ...f, category: e.target.value }))}
+                >
+                  {CATEGORY_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

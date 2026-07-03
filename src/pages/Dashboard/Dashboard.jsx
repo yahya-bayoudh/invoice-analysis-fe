@@ -3,11 +3,57 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Dashboard.module.css';
 import { useNavigate } from 'react-router-dom';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 
 const statusConfig = {
   done: { label: 'Payée', className: 'statusPaid' },
   pending: { label: 'En attente', className: 'statusPending' },
   error: { label: 'En retard', className: 'statusLate' },
+};
+
+const CATEGORY_LABELS = {
+  smartphone: 'Smartphone',
+  charger: 'Chargeur',
+  headphones: 'Écouteurs',
+  tablet: 'Tablette',
+  laptop: 'Ordinateur portable',
+  monitor: 'Écran',
+  mouse: 'Souris',
+  keyboard: 'Clavier',
+  other: 'Autre',
+};
+
+const CATEGORY_ORDER = [
+  'smartphone',
+  'charger',
+  'headphones',
+  'tablet',
+  'laptop',
+  'monitor',
+  'mouse',
+  'keyboard',
+  'other',
+];
+
+const CATEGORY_COLORS = {
+  smartphone: '#6366f1',
+  charger: '#f59e0b',
+  headphones: '#10b981',
+  tablet: '#3b82f6',
+  laptop: '#8b5cf6',
+  monitor: '#ec4899',
+  mouse: '#14b8a6',
+  keyboard: '#f97316',
+  other: '#94a3b8',
 };
 
 const formatCurrency = (value) =>
@@ -28,6 +74,21 @@ const formatDate = (value) => {
     month: 'short',
     year: 'numeric',
   }).format(date);
+};
+
+const ChartTooltip = ({ active, payload }) => {
+  if (!active || !payload || !payload.length) {
+    return null;
+  }
+
+  const item = payload[0].payload;
+
+  return (
+    <div className={styles.chartTooltip}>
+      <p className={styles.chartTooltipLabel}>{item.label}</p>
+      <p className={styles.chartTooltipValue}>{formatCurrency(item.total)}</p>
+    </div>
+  );
 };
 
 function Dashboard({ onImport }) {
@@ -105,6 +166,24 @@ function Dashboard({ onImport }) {
       latePercentage,
       recentInvoices,
     };
+  }, [invoices]);
+
+  const categoryData = useMemo(() => {
+    const totals = CATEGORY_ORDER.reduce((acc, key) => {
+      acc[key] = 0;
+      return acc;
+    }, {});
+
+    invoices.forEach((invoice) => {
+      const key = totals.hasOwnProperty(invoice.category) ? invoice.category : 'other';
+      totals[key] += Number(invoice.totalPrice) || 0;
+    });
+
+    return CATEGORY_ORDER.map((key) => ({
+      key,
+      label: CATEGORY_LABELS[key],
+      total: totals[key],
+    }));
   }, [invoices]);
 
   const kpis = [
@@ -197,6 +276,36 @@ function Dashboard({ onImport }) {
                 </p>
               </div>
             ))}
+          </div>
+
+          <div className={styles.chartCard}>
+            <div className={styles.tableHeader}>
+              <h2 className={styles.tableTitle}>Montant par catégorie</h2>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={categoryData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  interval={0}
+                  angle={-25}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  tickFormatter={(value) => formatCurrency(value)}
+                  width={80}
+                />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
+                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                  {categoryData.map((entry) => (
+                    <Cell key={entry.key} fill={CATEGORY_COLORS[entry.key]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
           <div className={styles.tableCard}>

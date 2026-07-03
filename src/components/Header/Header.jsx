@@ -30,12 +30,6 @@ const ChevronIcon = () => (
   </svg>
 );
 
-const notifications = [
-  { id: 1, text: 'Facture BTP Lefèvre en retard', time: 'Il y a 2h', unread: true },
-  { id: 2, text: 'Nouvelle facture importée avec succès', time: 'Il y a 5h', unread: true },
-  { id: 3, text: 'Recommandation IA disponible', time: 'Hier', unread: true },
-];
-
 function Header({ pendingCount = 0 }) {
   const location = useLocation();
   const currentLabel = pageTitles[location.pathname] || 'Page';
@@ -49,12 +43,12 @@ function Header({ pendingCount = 0 }) {
         <span className={styles.breadcrumbSep}><ChevronIcon /></span>
         <span className={styles.breadcrumbCurrent}>{currentLabel}</span>
       </div>
-
       <div className={styles.actions}>
         <div className={styles.notifWrapper} ref={bellRef}>
           <button
-            className={styles.iconBtn}
+            className={`${styles.iconBtn} ${notifOpen ? styles.iconBtnActive : ''}`}
             aria-label="Notifications"
+            aria-expanded={notifOpen}
             onClick={() => setNotifOpen((prev) => !prev)}
           >
             <BellIcon />
@@ -62,7 +56,6 @@ function Header({ pendingCount = 0 }) {
               <span className={styles.badge}>{pendingCount}</span>
             )}
           </button>
-
           {notifOpen && (
             <>
               <div className={styles.notifBackdrop} onClick={() => setNotifOpen(false)} />
@@ -88,4 +81,4 @@ function Header({ pendingCount = 0 }) {
   );
 }
 
-export default Header
+export default Header;

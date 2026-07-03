@@ -235,3 +235,31 @@
   color: #9ca3af;
   font-size: 13px;
 }
+.badge {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+}
+
+.badge:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.categorySelect {
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+}
+
+.categorySelect:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
