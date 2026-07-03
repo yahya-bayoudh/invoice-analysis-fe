@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 import styles from './Recommandations.module.css';
 
 const categoryConfig = {
@@ -39,62 +41,168 @@ function RecommandationCard({ rec }) {
 }
 
 function Recommandations() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [recs, setRecs] = useState(null);
   const [error, setError] = useState(null);
+  const [invoices, setInvoices] = useState([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(true);
 
-  const mockContext = `
-    Données factures FacturAI :
-    - Total factures : 128
-    - Montant total : 84 320 €
-    - Payées : 97 (75%)
-    - En attente : 20
-    - En retard : 11
-    - Clients principaux : Société Dupont, BTP Lefèvre, Cabinet Renard
-    - Facture la plus élevée en retard : BTP Lefèvre 12 450 €
-  `;
+  useEffect(() => {
+    let mounted = true;
+
+    const loadInvoices = async () => {
+      if (!user) {
+        setInvoices([]);
+        setInvoiceLoading(false);
+        return;
+      }
+
+      try {
+        setInvoiceLoading(true);
+        const userId = user?.id || user?._id || user?.email;
+        const response = await axios.get('http://localhost:3000/invoices', {
+          params: { userId },
+        });
+        const payload = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.data)
+            ? response.data.data
+            : [];
+        if (mounted) {
+          setInvoices(payload);
+        }
+      } catch {
+        if (mounted) {
+          setError('Impossible de charger les factures pour générer des recommandations.');
+        }
+      } finally {
+        if (mounted) setInvoiceLoading(false);
+      }
+    };
+
+    const loadRecommendations = async () => {
+      if (!user) {
+        setRecs(null);
+        return;
+      }
+
+      try {
+        const userId = user?.id || user?._id || user?.email;
+        const response = await axios.get('http://localhost:3000/recommendations', {
+          params: { userId },
+        });
+        const payload = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.data)
+            ? response.data.data
+            : [];
+        if (mounted) {
+          setRecs(payload.map((rec) => ({ ...rec, body: rec.description })));
+        }
+      } catch {
+        if (mounted) {
+          setError('Impossible de charger les recommandations sauvegardées.');
+        }
+      }
+    };
+
+    loadInvoices();
+    loadRecommendations();
+    return () => { mounted = false; };
+  }, [user]);
+
+  const summary = useMemo(() => {
+    const totalInvoices = invoices.length;
+    const totalAmount = invoices.reduce((sum, invoice) => sum + (Number(invoice.totalPrice) || 0), 0);
+    const paidCount = invoices.filter((invoice) => invoice.status === 'done').length;
+    const pendingCount = invoices.filter((invoice) => invoice.status === 'pending').length;
+    const lateCount = invoices.filter((invoice) => invoice.status === 'error').length;
+    const paidPercentage = totalInvoices ? Math.round((paidCount / totalInvoices) * 100) : 0;
+    const latePercentage = totalInvoices ? Math.round((lateCount / totalInvoices) * 100) : 0;
+
+    return {
+      totalInvoices,
+      totalAmount,
+      paidCount,
+      pendingCount,
+      lateCount,
+      paidPercentage,
+      latePercentage,
+    };
+  }, [invoices]);
+
+  const categoryData = useMemo(() => {
+    const totals = {
+      Smartphone: 0,
+      Chargeur: 0,
+      Écouteurs: 0,
+      Tablette: 0,
+      'Ordinateur portable': 0,
+      Écran: 0,
+      Souris: 0,
+      Clavier: 0,
+      Autre: 0,
+    };
+
+    invoices.forEach((invoice) => {
+      const category = invoice.category?.toLowerCase();
+      const label = {
+        smartphone: 'Smartphone',
+        charger: 'Chargeur',
+        headphones: 'Écouteurs',
+        tablet: 'Tablette',
+        laptop: 'Ordinateur portable',
+        monitor: 'Écran',
+        mouse: 'Souris',
+        keyboard: 'Clavier',
+      }[category] || 'Autre';
+
+      totals[label] += Number(invoice.totalPrice) || 0;
+    });
+
+    return Object.entries(totals).map(([label, total]) => ({ label, total }));
+  }, [invoices]);
+
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(value || 0);
 
   const fetchRecs = async () => {
     setLoading(true);
     setError(null);
     setRecs(null);
 
+    if (!user) {
+      setError('Vous devez être connecté pour générer des recommandations.');
+      setLoading(false);
+      return;
+    }
+
+    if (!invoices.length) {
+      setError('Aucune facture disponible pour générer des recommandations.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          system: `Tu es un conseiller financier expert en gestion de factures pour PME françaises.
-Analyse les données fournies et génère exactement 4 recommandations concrètes et actionnables.
-Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, sans balises markdown.
-Format exact :
-[
-  {
-    "category": "Trésorerie" | "Fiscalité" | "Optimisation" | "Risque",
-    "priority": "Urgent" | "Important" | "Conseil",
-    "title": "titre court max 8 mots",
-    "body": "explication claire en 2 phrases maximum",
-    "action": "texte du bouton d'action court"
-  }
-]`,
-          messages: [
-            {
-              role: 'user',
-              content: `Voici les données de mon entreprise :\n${mockContext}\nGénère 4 recommandations.`,
-            },
-          ],
-        }),
+      const userId = user?.id || user?._id || user?.email;
+      const response = await axios.post('http://localhost:3000/recommendations/generate', {
+        userId,
+        summary,
+        chartData: categoryData,
       });
 
-      const data = await response.json();
-      const text = data.content?.find(b => b.type === 'text')?.text || '';
-      const cleaned = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(cleaned);
-      setRecs(parsed);
+      const created = Array.isArray(response.data) ? response.data : [];
+      setRecs(created.map((rec) => ({
+        ...rec,
+        body: rec.description,
+      })));
     } catch {
-      setError('Impossible de charger les recommandations. Veuillez réessayer.');
+      setError('Impossible de générer les recommandations. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -118,7 +226,7 @@ Format exact :
         </button>
       </div>
 
-      {!recs && !loading && !error && (
+      {(!recs || (Array.isArray(recs) && recs.length === 0)) && !loading && !error && (
         <div className={styles.empty}>
           <span className={styles.emptyIcon}><SparkleIcon /></span>
           <p className={styles.emptyTitle}>Aucune recommandation générée</p>
@@ -130,7 +238,7 @@ Format exact :
         <div className={styles.error}>{error}</div>
       )}
 
-      {recs && (
+      {Array.isArray(recs) && recs.length > 0 && (
         <div className={styles.grid}>
           {recs.map((rec, i) => (
             <RecommandationCard key={i} rec={rec} />
@@ -138,7 +246,7 @@ Format exact :
         </div>
       )}
 
-      {recs && (
+      {Array.isArray(recs) && recs.length > 0 && (
         <button className={styles.refreshBtn} onClick={fetchRecs} disabled={loading}>
           <RefreshIcon /> Régénérer
         </button>

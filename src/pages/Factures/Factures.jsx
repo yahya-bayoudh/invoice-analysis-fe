@@ -309,21 +309,70 @@ function Factures({ onImport }) {
           </table>
 
           <div className={styles.paginationBar}>
-            <button
-              className={styles.actionBtn}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              disabled={page === 1}
-            >
-              Précédent
-            </button>
-            <span className={styles.pageSubtitle}>Page {page} / {totalPages}</span>
-            <button
-              className={styles.actionBtn}
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              disabled={page >= totalPages}
-            >
-              Suivant
-            </button>
+            <div className={styles.paginationControls}>
+              <button
+                className={`${styles.paginationBtn} ${page === 1 ? styles.disabledBtn : ''}`}
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+              >
+                Première
+              </button>
+              <button
+                className={`${styles.paginationBtn} ${page === 1 ? styles.disabledBtn : ''}`}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page === 1}
+              >
+                ←
+              </button>
+
+              {(() => {
+                const start = Math.max(1, page - 2);
+                const end = Math.min(totalPages, page + 2);
+                const pages = [];
+                for (let p = start; p <= end; p++) pages.push(p);
+                const items = [];
+                if (start > 1) items.push(1, 'gap');
+                pages.forEach((p) => items.push(p));
+                if (end < totalPages) items.push('gap', totalPages);
+
+                return items.map((it, idx) => {
+                  if (it === 'gap') return (
+                    <span key={`g-${idx}`} className={styles.pageGap}>…</span>
+                  );
+                  const isActive = it === page;
+                  return (
+                    <button
+                      key={it}
+                      className={`${styles.paginationBtn} ${isActive ? styles.paginationBtnActive : ''}`}
+                      onClick={() => setPage(it)}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {it}
+                    </button>
+                  );
+                });
+              })()}
+
+              <button
+                className={`${styles.paginationBtn} ${page >= totalPages ? styles.disabledBtn : ''}`}
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                disabled={page >= totalPages}
+              >
+                →
+              </button>
+              <button
+                className={`${styles.paginationBtn} ${page >= totalPages ? styles.disabledBtn : ''}`}
+                onClick={() => setPage(totalPages)}
+                disabled={page >= totalPages}
+              >
+                Dernière
+              </button>
+            </div>
+
+            <div className={styles.paginationInfo}>
+              <span className={styles.pageSubtitle}>Page {page} sur {totalPages}</span>
+              <span className={styles.pageSubtitle} style={{ marginLeft: 12 }}>{totalItems} factures</span>
+            </div>
           </div>
         </div>
       )}
