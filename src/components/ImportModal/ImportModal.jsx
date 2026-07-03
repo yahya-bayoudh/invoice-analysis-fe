@@ -138,7 +138,7 @@ function ImportModal({ onClose, onImportSuccess }) {
 
       formData.append(
         'prompt',
-        'Analyse cette facture et réponds UNIQUEMENT en JSON valide sans texte autour. Format exact : {"reference":"","client":"","date":"","montant":"","statut":"payée|en attente|en retard","categorie":"smartphone|charger|headphones|tablet|laptop|monitor|mouse|keyboard|other"}. Si une valeur est introuvable, utilise une chaîne vide.'
+        'Analyse cette facture et réponds UNIQUEMENT en JSON valide sans texte autour. Format exact : {"reference":"","client":"","date":"","montant":"","statut":"payée|en attente|en retard","categorie":"smartphone|charger|headphones|tablet|laptop|monitor|mouse|keyboard|other"}. Si une valeur est introuvable, utilise une chaîne vide. DATE MUST BE IN THIS FRENSH FORMAT DD/MM/YYYY.'
       );
 
 
@@ -232,8 +232,9 @@ function ImportModal({ onClose, onImportSuccess }) {
       }
 
       handleClose();
-    } catch {
+    } catch(error) {
       setError("Impossible d'enregistrer la facture. Vérifiez les données extraites.");
+      console.error('Erreur lors de l\'importation de la facture :', error);
     }
   };
 
